@@ -1,0 +1,11 @@
+data = LOAD 'score.csv' USING PigStorage(',') AS (seat:int, midterm:int, w_total:double, h_total:double, q_total:double, final:int, total:double);
+RCDS = FILTER data BY seat is not null;
+rows = FOREACH RCDS GENERATE h_total, q_total, final;
+all_RCDS = GROUP rows all;
+averages = FOREACH all_RCDS GENERATE AVG(rows.h_total) AS xbar, AVG(rows.final) AS ybar, AVG(rows.q_total) AS zbar;
+terms = FOREACH rows GENERATE (h_total*final) AS xy, (q_total*q_total) AS zsq, (q_total*final) AS zy, (h_total*q_total) AS xz, (h_total*h_total) AS xsq;
+all_terms = GROUP terms all;
+beta1_2 = FOREACH all_terms GENERATE ((SUM(terms.xy)*SUM(terms.zsq))-(SUM(terms.zy)*SUM(terms.xz)))/((SUM(terms.xsq)*SUM(terms.zsq))-(SUM(terms.xz)*SUM(terms.xz))) AS beta1, ((SUM(terms.zy)*SUM(terms.xsq))-(SUM(terms.xy)*SUM(terms.xz)))/((SUM(terms.xsq)*SUM(terms.zsq))-(SUM(terms.xz)*SUM(terms.xz))) AS beta2;
+beta0 = FOREACH beta1_2 GENERATE averages.ybar-(beta1*averages.xbar)-(beta2*averages.zbar);
+beta_result = FOREACH beta1_2 GENERATE beta0.$0, beta1, beta2;
+DUMP beta_result ;
